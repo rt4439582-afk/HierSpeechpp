@@ -99,3 +99,12 @@ def english_cleaners2(text):
   phonemes = backend.phonemize([text], strip=True)[0]
   phonemes = collapse_whitespace(phonemes)
   return phonemes
+
+
+def persian_cleaners(text):
+  """Pipeline for Persian text using espeak phonemizer."""
+  text = lowercase(text)
+  text = collapse_whitespace(text)
+  phonemes = phonemize(text, language='fa', backend='espeak', strip=True)
+  phonemes = collapse_whitespace(phonemes)
+  return phonemes
