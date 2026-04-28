@@ -16,7 +16,8 @@ class AudioDataset(torch.utils.data.Dataset):
     def __init__(self, config, training=True):
         super(AudioDataset, self).__init__()
         self.config = config
-        self.data_ratio = config.data.train_data_ratio
+        # Some configs do not define `train_data_ratio`; default to 1.0 for backward compatibility.
+        self.data_ratio = getattr(config.data, "train_data_ratio", 1.0)
         self.hop_length = config.data.hop_length
         self.training = training
         self.mel_length = config.train.segment_size // config.data.hop_length
