@@ -189,7 +189,10 @@ python ttv_v1/preprocessing/prepare_filelist_generic.py \
 
 ### ۵.۵ اعتبارسنجی دیتاست (طول‌ها، فایل‌های خراب)
 ```bash
-python scripts/validate_fa_dataset.py --filelist_dir filelists/fa_smoke
+python scripts/validate_fa_dataset.py \
+  --wav_dir /content/smoke/wav16k --text_dir /content/smoke/text \
+  --report_csv /content/smoke/validate_report.csv \
+  --summary_json /content/smoke/validate_summary.json
 ```
 
 ### ۵.۶ config کوچکِ تست دود
