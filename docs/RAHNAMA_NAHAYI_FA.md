@@ -109,6 +109,53 @@ C-1 (۲۴۶)، C-2 (blank=0)، C-3 (فیلتر CTC)، H-1 (max_text_len=256)، H
 
 ---
 
+## ۴.۵) «پیشنهاد اول» آماده شد — warm-start از pretrained (مرحله‌به‌مرحله)
+
+این همان مسیری است که تصویب کردید: اجرای نو، ولی روی پایهٔ pretrained (نه وزن تصادفی).
+
+### گام ۱: گرفتن چک‌پوینت pretrained رسمی
+TTV انگلیسی رسمی HierSpeech++ = `ttv_lt960_ckpt.pth` (۱۰۷M، LibriTTS-960). از پوشهٔ Google Drive رسمی:
+
+- پوشهٔ TTV: https://drive.google.com/drive/folders/1QiFFdPhqhiLFo8VXc0x7cFHKXArx7Xza
+- در Colab: `!gdown --folder "https://drive.google.com/drive/folders/1QiFFdPhqhiLFo8VXc0x7cFHKXArx7Xza" -O /content/ttv_official`
+
+> یا اگر `G_0.pth`ی که در Drive آپلود کردید همان pretrained ۱۷۸ است (سلول ۸ مشخص می‌کند)، از همان به‌عنوان منبع استفاده کنید.
+
+### گام ۲: ساخت چک‌پوینت warm-start سازگار با ۲۴۶
+اسکریپت `scripts/prepare_warmstart_ckpt.py` (در همین مخزن، تست‌شده) این کار را می‌کند:
+
+```bash
+export PYTHONPATH=.
+python scripts/prepare_warmstart_ckpt.py \
+  -c config_gpu_3090.json \
+  -p pretrained/ttv_lt960_ckpt.pth \
+  -m checkpoints/persian_main
+# خروجی: checkpoints/persian_main/G_0.pth  (iteration=0, optimizer تازه)
+```
+
+این اسکریپت:
+- همهٔ لایه‌های هم‌شکل (decoder/flow/posterior/style/pitch/duration) را از pretrained کپی می‌کند،
+- فقط `enc_p.emb` و `phoneme_classifier` را (که ۱۷۸→۲۴۶ تغییر کرده‌اند) از نو init می‌کند،
+- چک‌پوینت را با `iteration=0` و یک optimizer تازه ذخیره می‌کند.
+
+### ⚠️ تله‌ای که این اسکریپت می‌بندد (بسیار مهم)
+اگر چک‌پوینت خام ۱۷۸ را مستقیم در `checkpoints/<exp>/` بگذارید، به‌خاطر عدم‌تطابق ابعاد،
+`utils.load_checkpoint` خطا می‌دهد و بلوک `try/except` در `train_ttv_v1.py` آن را می‌بلعد و
+**بی‌صدا از صفرِ تصادفی** آموزش می‌دهد — یعنی روزها GPU هدر می‌رود بدون اینکه بفهمید.
+با این اسکریپت، لایه‌ها از قبل ۲۴۶ می‌شوند و لود **تمیز** انجام می‌شود.
+
+### گام ۳: تأیید لود (قبل از خرج GPU)
+```bash
+python -c "import torch; d=torch.load('checkpoints/persian_main/G_0.pth',map_location='cpu'); print('iter',d['iteration'],'tensors',len(d['model']),'optim',('optimizer' in d))"
+# سپس شروع آموزش -> در log باید ببینید: Loaded checkpoint ... (iteration 0)
+```
+
+> اثبات: این اسکریپت روی CPU تست شد — ۸۳۳/۸۳۵ لایه کپی، ۲ لایهٔ متن reinit، و `load_checkpoint` با `iteration=0` بدون خطا لود کرد.
+
+در نوت‌بوک Colab، این کار در سلول‌های ۱۲–۱۳ (مسیر B) خودکار انجام می‌شود.
+
+---
+
 ## ۵) فاز ۱ — تست دود روی Colab (گام‌به‌گام، دقیق)
 
 > از نوت‌بوک `notebooks/FA_TTV_Colab_perfect_project.ipynb` استفاده کنید؛ شناسه‌های Drive شما از قبل در آن قرار دارد. این‌جا همان مراحل به‌صورت توضیحی آمده است.
